@@ -1871,7 +1871,7 @@
                   <button type="button" class="message-send-btn" id="sendMessageBtn">
                     Gửi lời nhắn cho tôi
                   </button>
-                  <span class="message-status" id="messageStatus">Tin nhắn sẽ bay thẳng về bot Telegram bên mxh.</span>
+                  <span class="message-status" id="messageStatus">Gửi mình một lời nhắn dễ thương nhé.</span>
                 </div>
               </div>
 
@@ -2083,7 +2083,7 @@
       qrTemplate: 'compact2',
       defaultAmount: 0, // để 0 nếu muốn người ủng hộ tự nhập số tiền
       // Gửi lời nhắn trực tiếp sang hệ mxh (đã tự fan-out Telegram ở phía đó)
-      mxhWebhookUrl: 'https://script.google.com/macros/s/AKfycbztTRTV_lJwa7V-dNg-LJUq0QV5C_0UXNL2bQbQntq_p7AZidNf-MrYte_-XLBdBmgx/exec',
+      mxhWebhookUrl: 'https://clean-webhook-checker.onrender.com/webhook/lead',
       mxhWebhookMethod: 'POST',
       mxhWebhookRequestMode: 'cors',
       // Dán URL Apps Script Web App tại đây (kết thúc bằng /exec)
@@ -2252,31 +2252,28 @@
       if (type) messageStatusEl.classList.add(type);
     };
 
-    const postMessageToMxhWebhook = async (payloadText, requestMode) => {
+    const postMessageToMxhWebhook = async (payloadText) => {
       const response = await fetch(APP_CONFIG.mxhWebhookUrl, {
         method: APP_CONFIG.mxhWebhookMethod || 'POST',
         headers: {
-          'Content-Type': 'text/plain;charset=UTF-8'
+          'Content-Type': 'application/json'
         },
         body: payloadText,
-        mode: requestMode,
         keepalive: true
       });
 
-      if (requestMode !== 'no-cors' && !response.ok) {
+      if (!response.ok) {
         throw new Error(`Webhook status ${response.status}`);
       }
 
-      if (requestMode !== 'no-cors') {
-        let webhookPayload = null;
-        try {
-          webhookPayload = await response.json();
-        } catch (parseError) {
-          webhookPayload = null;
-        }
-        if (webhookPayload && webhookPayload.ok === false) {
-          throw new Error(webhookPayload.error || 'Webhook returned ok=false');
-        }
+      let webhookPayload = null;
+      try {
+        webhookPayload = await response.json();
+      } catch (parseError) {
+        webhookPayload = null;
+      }
+      if (webhookPayload && webhookPayload.ok === false) {
+        throw new Error(webhookPayload.error || 'Webhook returned ok=false');
       }
     };
 
@@ -2296,7 +2293,7 @@
       }
 
       if (sendMessageBtnEl) sendMessageBtnEl.disabled = true;
-      setMessageStatus('Đang phóng tin nhắn qua hệ mxh rồi bay vào Telegram...', '');
+      setMessageStatus('Đang gửi lời nhắn của bạn...', '');
 
       try {
         const amountText = amount > 0 ? formatVnd(amount) : 'chưa chọn mức cụ thể';
@@ -2315,17 +2312,7 @@
           tags: 'nuoi-toi,message'
         };
         const payloadText = JSON.stringify(webhookPayload);
-        const preferredMode = APP_CONFIG.mxhWebhookRequestMode || 'cors';
-
-        try {
-          await postMessageToMxhWebhook(payloadText, preferredMode);
-        } catch (primaryError) {
-          if (preferredMode !== 'no-cors') {
-            await postMessageToMxhWebhook(payloadText, 'no-cors');
-          } else {
-            throw primaryError;
-          }
-        }
+        await postMessageToMxhWebhook(payloadText);
 
         setMessageStatus('Đã gửi! Tôi vừa nhận được lời nhắn dễ thương từ bạn.', 'ok');
         if (supportMessageEl) supportMessageEl.value = '';
